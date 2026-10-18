@@ -1,0 +1,35 @@
+
+# Secrets
+.env
+.env.*
+!.env.example
+secrets.json
+.streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Local runtime data and private incident records
+data/active_incident.json
+data/agency_inbox.jsonl
+data/osm_cache/
+data/tracks/
+data/walk_session.json
+
+# Database files and temporary database journals
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+*.db
+
+# Logs and IDE files
+*.log
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

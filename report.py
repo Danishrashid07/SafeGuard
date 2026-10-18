@@ -1,0 +1,80 @@
+"""report.py: tamper-evident incident report (HTML you can print to PDF + JSON evidence bundle)."""
+from __future__ import annotations
+
+import hashlib
+import html
+import json
+from datetime import datetime, timezone
+
+RISK_COLORS = {"CRITICAL": "#b71c1c", "HIGH": "#e65100", "MEDIUM": "#f9a825", "LOW": "#2e7d32"}
+
+
+def _sha(obj) -> str:
+    canon = json.dumps(obj, sort_keys=True, ensure_ascii=False, separators=(",", ":"), default=str)
+    return hashlib.sha256(canon.encode("utf-8")).hexdigest()
+
+
+def verify_bundle(bundle: dict) -> bool:
+    """True if the JSON evidence bundle was not modified after it was generated."""
+    body = {k: v for k, v in bundle.items() if k != "integrity_sha256"}
+    return _sha(body) == bundle.get("integrity_sha256")
+
+
+def build_report(final: dict, logs: list[dict], trigger: dict, trail: list[dict], whatif: dict | None = None):
+    trig = {k: v for k, v in (trigger or {}).items() if k != "taps"}
+    trig["taps_count"] = len((trigger or {}).get("taps", []))
+    plan = [{k: a[k] for k in ("order", "channel", "recipient_name", "reason")} for a in final.get("plan", [])]
+    receipts = [{k: r.get(k) for k in ("channel", "recipient_name", "status", "sent_at", "live")}
+                for r in final.get("receipts", [])]
+    body = {"incident_id": final["incident_id"], "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "risk_level": final["risk_level"], "risk_score": final["risk_score"], "confidence": final["confidence"],
+            "trigger": trig, "triage": final.get("triage"), "explanation": final.get("explanation"),
+            "plan": plan, "receipts": receipts, "audit_log": logs, "trail": trail,
+            "whatif": whatif["rows"] if whatif else None}
+    bundle = {**body, "integrity_sha256": _sha(body)}
+
+    e = html.escape
+
+    def table(headers, rows):
+        head = "".join(f"<th>{e(str(h))}</th>" for h in headers)
+        trs = "".join("<tr>" + "".join(f"<td>{e(str(c))}</td>" for c in r) + "</tr>" for r in rows)
+        return f"<table><tr>{head}</tr>{trs}</table>"
+
+    color = RISK_COLORS.get(body["risk_level"], "#444")
+    expl = body["explanation"] or {}
+    plan_rows = [[a["order"], a["channel"], a["recipient_name"], a["reason"],
+                  receipts[i]["status"] if i < len(receipts) else "-"] for i, a in enumerate(plan)]
+    timeline = [[l["step"], l["timestamp"], l["risk_level"], f"{l['confidence_score']:.2f}", f"{l['latency_ms']} ms",
+                 l["thought"]] for l in logs]
+    trail_html = "<p>No live position trail was recorded.</p>"
+    if trail:
+        a, b = trail[0], trail[-1]
+        trail_html = (f"<p>{len(trail)} positions recorded. First: {a['lat']:.5f}, {a['lng']:.5f} at {e(a['ts'])}. "
+                      f"Last: {b['lat']:.5f}, {b['lng']:.5f} at {e(b['ts'])} "
+                      f"(<a href='https://maps.google.com/?q={b['lat']},{b['lng']}'>map</a>).</p>"
+                      + table(["Time", "Lat", "Lng", "Source"], [[p["ts"], p["lat"], p["lng"], p["source"]] for p in trail[:25]]))
+    whatif_html = ""
+    if whatif:
+        whatif_html = ("<h2>What-if analysis</h2>" + "".join(f"<p>{e(i.replace('**', ''))}</p>" for i in whatif["insights"])
+                       + table(["If...", "Score", "Risk", "Change", "Added", "Dropped"],
+                               [[r["If..."], r["Score"], r["Risk"], r["Change"], r["Actions added"], r["Actions dropped"]]
+                                for r in whatif["rows"]]))
+    doc = f"""<!doctype html><html><head><meta charset="utf-8"><title>Incident {e(body['incident_id'])}</title>
+<style>body{{font-family:Segoe UI,Arial,sans-serif;max-width:900px;margin:30px auto;color:#222}}
+table{{border-collapse:collapse;width:100%;font-size:13px;margin:8px 0}}th,td{{border:1px solid #ccc;padding:5px 8px;text-align:left;vertical-align:top}}
+th{{background:#f0f0f0}}.badge{{background:{color};color:#fff;padding:3px 12px;border-radius:6px;font-weight:700}}
+code{{word-break:break-all;font-size:12px}}</style></head><body>
+<h1>SafeGuard incident report</h1>
+<p><b>Incident:</b> {e(body['incident_id'])} &nbsp; <b>Generated:</b> {e(body['generated_at'])}</p>
+<p><span class="badge">{e(body['risk_level'])}</span> &nbsp; score {body['risk_score']:.2f} &nbsp; overall confidence {body['confidence']:.2f}</p>
+<h2>Summary</h2><p>{e(expl.get('summary', ''))}</p>
+<h2>Trigger</h2>{table(['Field', 'Value'], [[k, v] for k, v in trig.items()])}
+<h2>Triage</h2><p>{e(json.dumps(body['triage'], ensure_ascii=False))}</p>
+<h2>Dispatch actions and delivery</h2>{table(['#', 'Channel', 'Recipient', 'Why', 'Status'], plan_rows)}
+<h2>Decision timeline (audit log)</h2>{table(['Step', 'Time (UTC)', 'Risk', 'Confidence', 'Latency', 'Reasoning'], timeline)}
+<h2>Live position trail</h2>{trail_html}{whatif_html}
+<h2>Integrity</h2><p>SHA-256 of the evidence bundle (JSON, sorted keys, without this field):<br><code>{bundle['integrity_sha256']}</code></p>
+<p style="font-size:12px;color:#666">Generated by SafeGuard (hackathon demo). Agency channels in this deployment are simulated;
+contact alerts are delivered as push notifications via ntfy.sh. Medical notes are not included in this report.</p>
+</body></html>"""
+    return doc, bundle
