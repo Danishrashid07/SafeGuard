@@ -1,0 +1,186 @@
+# SafeGuard — AI-Powered Emergency Response System
+
+SafeGuard is a Python-based emergency response and safety monitoring prototype designed to assess potential incidents, organize response workflows, visualize relationships between entities, and support incident tracking.
+
+The project uses Streamlit for its user interface and supports FalkorDB for graph-backed data, with a NetworkX-based fallback.
+
+> **Disclaimer:** SafeGuard is a prototype for demonstration and testing. It is not a replacement for official emergency services. A planned dispatch action does not necessarily mean that emergency personnel or contacts have been reached.
+
+## Key Features
+
+- **SOS and Incident Management:** Demonstrate emergency alert workflows and incident handling.
+- **Risk Assessment:** Display risk scores, risk levels, and confidence estimates.
+- **Response Planning:** Organize proposed response actions and escalation workflows.
+- **Graph-Based Reasoning:** Represent relationships between incidents, agents, and other entities.
+- **FalkorDB Integration:** Support graph persistence through FalkorDB, with a NetworkX fallback.
+- **Incident Tracking:** Provide interfaces for tracking and location-related workflows.
+- **Agency Console:** Display agency-oriented incident workflows.
+- **Context Graph:** Explore relationships and contextual information.
+- **Audit and Reasoning Trace:** Inspect decision-related information produced by the application.
+- **Reporting:** Generate incident-related reports.
+- **What-If Analysis:** Explore alternative response scenarios where supported by the application.
+
+## Technology Stack
+
+- Python
+- Streamlit
+- FalkorDB
+- NetworkX
+- SQLite
+- Pyvis
+- Docker
+
+## Project Structure
+
+```text
+SafeGuard/
+├── app.py
+├── 1_Agency_Console.py
+├── 2_live_track.py
+├── 3_context_graph.py
+├── agent_workflow.py
+├── crew.py
+├── falkor_graph.py
+├── falkor_memory.py
+├── graph_store.py
+├── learning.py
+├── llm.py
+├── memory_store.py
+├── notifier.py
+├── osm_data.py
+├── report.py
+├── routing.py
+├── sos_server.py
+├── tracking.py
+├── walk_ui.py
+├── walkmode.py
+├── whatif.py
+├── requirements.txt
+└── README.md
+```
+
+*The structure above lists the main application modules. Additional local runtime data may be generated when the application runs.*
+
+## Requirements
+
+- Python installed on your system
+- Git
+- Docker Desktop, when using FalkorDB
+- The Python packages required by the project
+
+## Installation on Windows
+
+### 1. Clone the repository
+
+```powershell
+git clone https://github.com/Danishrashid07/SafeGuard.git
+cd SafeGuard
+```
+
+### 2. Create a virtual environment
+
+```powershell
+python -m venv .venv
+```
+
+Activate it:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+If PowerShell blocks activation, use Command Prompt instead:
+
+```cmd
+.venv\Scripts\activate
+```
+
+### 3. Install dependencies
+
+If `requirements.txt` exists:
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+If it does not exist yet, create it from the working development environment before following this step.
+
+## Running SafeGuard
+
+### Option A: Run with FalkorDB
+
+Start Docker Desktop, then start a FalkorDB container:
+
+```powershell
+docker run -d --name falkordb -p 6379:6379 -p 3000:3000 falkordb/falkordb:latest
+```
+
+If a container named `falkordb` already exists, start it instead:
+
+```powershell
+docker start falkordb
+```
+
+Set the graph backend and launch the main application:
+
+```powershell
+$env:GRAPH_BACKEND = "falkordb"
+python -m streamlit run app.py
+```
+
+### Option B: Run with the fallback backend
+
+In PowerShell:
+
+```powershell
+$env:GRAPH_BACKEND = "networkx"
+python -m streamlit run app.py
+```
+
+Open the local URL printed by Streamlit in your browser.
+
+> Actual available features depend on the project's installed dependencies and configuration. Configure optional language-model and notification integrations separately if required.
+
+## Configuration and Security
+
+- Never commit API keys, passwords, access tokens, or `.env` files.
+- Keep private incident records, real contact information, and sensitive location data out of public repositories.
+- Use synthetic data when demonstrating the application publicly.
+- Review notification settings before testing, because configured integrations may send real notifications.
+- Do not publish personal information contained in generated reports or local database files.
+
+## Demo
+
+**GitHub Repository:**  
+https://github.com/Danishrashid07/SafeGuard
+
+**Demo Video:**  
+Add your demo video link here after recording and uploading it.
+
+**Screenshots:**  
+Add screenshots of the dashboard, risk assessment, response plan, graph visualization, and tracking interface.
+
+## Current Limitations
+
+- This is a demonstration prototype and has not been established as a production-grade emergency dispatch system.
+- Actual SMS, push notification, or external service delivery depends on the relevant integration and configuration.
+- Language-model explanations may use fallback behavior when an LLM provider is unavailable.
+- Risk scores and response suggestions should not be treated as verified real-world assessments.
+
+## Future Improvements
+
+- Improve incident acknowledgement and escalation tracking.
+- Expand automated testing and failure handling.
+- Improve database persistence verification and auditability.
+- Add more comprehensive access control and security protections.
+- Improve monitoring, deployment, and documentation.
+
+## Author
+
+**Danish Rashid**
+
+GitHub: https://github.com/Danishrashid07
+
+## License
+
+No license has been specified yet. All rights remain with the copyright holder unless a license is added to this repository.
